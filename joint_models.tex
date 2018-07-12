@@ -1,0 +1,964 @@
+\documentclass[12pt]{article}
+\usepackage[a4paper,left=1in,top=1in,right=1in,bottom=1in,nohead]{geometry}
+\usepackage{amsmath}
+%\usepackage{graphicx,psfrag,epsf}
+\usepackage[final]{graphicx}
+\usepackage{enumerate}
+\usepackage{natbib}
+\usepackage{url} % not crucial - just used below for the URL 
+
+\usepackage{float}
+\usepackage{chngcntr}
+\usepackage{tocloft}
+
+\usepackage{amsthm}
+
+\DeclareMathOperator{\vect}{vec}
+
+\usepackage{lscape}
+\usepackage{ltxtable}
+\usepackage{array,multirow,makecell}
+\usepackage{tabularx}
+
+
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{longtable}
+
+%\pdfminorversion=4
+% NOTE: To produce blinded version, replace "0" with "1" below.
+\newcommand{\blind}{1}
+
+%% DON'T change margins - should be 1 inch all around.
+%\addtolength{\oddsidemargin}{-.5in}%
+%\addtolength{\evensidemargin}{-.5in}%
+%\addtolength{\textwidth}{1in}%
+%\addtolength{\textheight}{-.3in}%
+%\addtolength{\topmargin}{-.8in}%
+
+\usepackage{pdfpages}
+\usepackage{subcaption}
+\usepackage{color}
+
+\usepackage{verbatim}
+
+\makeatletter
+\def\verbatim@font{\linespread{1}\normalfont\ttfamily}
+\makeatother
+
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathrsfs}
+
+
+
+%\renewcommand{\baselinestretch}{1.5}
+
+\begin{document}
+
+%\bibliographystyle{natbib}
+
+%\def\spacingset#1{\renewcommand{\baselinestretch}%
+%{#1}\small\normalsize} \spacingset{1}
+
+\renewcommand{\baselinestretch}{1.2}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\if1\blind
+{
+  \title{\bf A Practical Tutorial for Joint Models Estimation in R}
+  \author{
+    Sezen Cekic\thanks{
+    The authors gratefully acknowledge \textit{Lifebrain H2020-SC1-2016-2017}}\hspace{.2cm}\\
+    Department of Psychology, University of Geneva,   \\
+    Stephen Aichele\thanks{
+    The authors gratefully acknowledge \textit{LIVES}}\hspace{.2cm}\\
+    Department of Psychology, University of Geneva,\\
+    and \\
+    Paolo Ghisletta \\
+    Department of Psychology, University of Geneva}
+  \maketitle
+} \fi
+
+\if0\blind
+{
+  \bigskip
+  \bigskip
+  \bigskip
+  \begin{center}
+    {\LARGE\bf Title}
+\end{center}
+  \medskip
+} \fi
+
+\bigskip
+\begin{abstract}
+In the last decade, joint modeling approach received a lot of interest in biostatistics and medical research.
+This type of models enables the simultaneous modelisation and estimation of a longitudinal measure and a correlated time-to-event, providing a framework to assess the predictive ability of this longitudinal measure on the correlated time-to-event. By simultaneously evaluating the longitudinal and the time-to-event data, joint modeling reduces the biases and improve precision over traditional separate mixed and survival models. In this article, we proposed a step-by-step tutorial to illustrate the application and the interpretation of the joint modeling methodology with two different datasets from medical and behavioural science in order to highlight their own properties and particularities in application. Analysis were performed with the recent and very powerful \texttt{JMbayes R} package.
+
+\end{abstract}
+
+\clearpage
+
+\section{Introduction}
+
+In many research settings, it is very common to record both longitudinal measurements on a continuous response and a correlated indicator about the occurrence of an event of interest on the same observations. A prototypical example in clinical research is the repeated assessment of a biological indicator (e.g., blood pressure, antibody affinity, cholesterol level) that is thought to relate to an event such as death, recovery from a disease, or disease diagnosis. Methods for the separate analysis of such outcomes are well established in the literature, such as Cox model for survival data (\cite{cox1972}) and mixed effects models for longitudinal data (\cite{mcculloch2004generalized}).
+
+Depending on the research questions of interest, different types of statistical analysis are required. Research questions involving only one outcome at a time can be answered with classical survival or longitudinal models. On the other hand, for addressing research questions about the association between the longitudinal evolution of measurement and the hazard of death, complex joint models are required (see \cite{Wulfsohn1997}, \cite{Song_2002}, \cite{Henderson2000} and \cite{rizopoulos_book} for basic literature on joint modeling). This recent class of models is now very frequently applied in medical research (see e.g. \cite{sene_shared_2014}, \cite{brown2003bayesian} and \cite{he2016joint}).
+
+However, joint models for longitudinal and time to an event data are not well known yet in psychological and behavioral research where their applications remain scarce, despite the proliferation of data that could be meaningfully analysed by this powerful methodology. We founded very few occurrences of these models application in psychological and behavioral field, despite the fact that a lot of interesting research questions may be addressed with these joint models. In \cite{Ghisletta_2006} and \cite{ghisletta2008application}, authors use joint models to understand how cognitive performance in older adults may help to predict survival and in \cite{McArdle_2005}, authors show the causal impact of cognitive performance evolution on dementia diagnosis. Finally in \cite{Muniz_2018}, authors apply joint models to show how the visuospatial reasoning evolution is associated with the hazard of death. Furthermore, nowadays the collection of quality of life (QOL) data has become increasingly common and may definitely be predictive for survival (\cite{gould_joint_2015}). A joint modelisation of correlated longitudinal (QOL) and survival outcomes is able to investigate the prognostic impact of patient's life's quality on death. While often many different facets of quality of life are measured (such as mood, physical wellbeing, physical activity and so on), a multivariate joint model whose enable to analyse the common impact of several markers on the risk of death is necessary. These multivariate joint models have recently been discussed for example in \cite{hickey2016joint} and \cite{he2016joint}, and furthermore implemented very recently within the \texttt{JMbayes}, the \texttt{joineRML}, and the \texttt{rstanarm} \texttt{R} packages (see Section \ref{discussion} for further details).
+%In the educational research field, we founded only one application of these joint models in \cite{Muthen_2005}. In this research, authors studied the influence of repeated aggressive behavior in the classroom by pupils on their possible school removal. 
+
+The lack of an accessible and clear guidance documentation on the practical application of these complex models in the psychological and behavioural literature certainly inhibits their wider utilization by uninitiated users. Here, we set out to provide such a tutorial document, in the hope of elucidating some uses of the joint modeling of longitudinal and time-to-event data methodology with the open-source software \texttt{JMbayes} available within the \texttt{R} environment (\cite{JMbayes}). 
+%Naïve approaches as time-to-death modelisation are frequently used in behavioural research instead of joint modeling (e.g. \cite{thorvaldsson2006aging}, \cite{gerstorf2008life} and \cite{gerstorf2013age}). Expliquer en quoi c'est différent
+
+Many dedicated software became available together with the theoretical development of the joint models. Detailed Tables describing functionalities of existing packages designed in the \texttt{R} environment can be founded in Tables \ref{Table JM}, \ref{Table JMbayes}, \ref{Table joineR}, \ref{Table lcmm}, \ref{Table frailtypack} and \ref{Table rstanarm}. In this paper, we will focus on the package \texttt{JMbayes} developed within the \texttt{R} environment for statistical analysis (\cite{R}) for several reasons. The \texttt{R} software is freely available, runs on different operating systems (Windos, Lynux, Mac, Sun etc.), and its code is open-source, meaning that anyone with enough knowledge may read how all calculations have been implemented and can modified them. Second, the \texttt{JMbayes} package is very flexible in terms of joint modeling and thus offers many possibilities to empirically test and confront alternative hypotheses about the functional relations between the longitudinal and the time-to-event data. This flexibility is quite important, as the relation between the continuous variable and the event may take several forms and thus lead to considerable differences in terms of theoretical interpretation and conclusions about the causal relation between the longitudinal and the time-to-event outcome. The \texttt{JMbayes} package furthermore allows us to include non linear spline effects in the linear part of the joint model as well as stratification criteria in the survival Cox submodel and last but not least, it allows us to compare the estimated models (see Sections \ref{Longitudinal submodel}, \ref{Survival submodels} and \ref{joint models comparison} for further details). Finally, joint models are complex and computationally very intensive. Thus from an algorithmic perspective, the \texttt{JMbayes} package makes use of a Bayesian estimation method, which is highly attractive for applications where classical likelihood methods may not be applicable or fail to converge. Moreover, Bayesian paradigm yield to exact results where asymptotic approximations are not necessary. The model assessment is more straightforward, the computational implementation is typically simple, and historical data can be incorporated easily into the inference procedure. 
+
+When we first started using this package ourselves, despite our familiarity with both the \texttt{R} language and the statistical conceptual features of the joint modeling, we encountered a number of practical issues for the successful package use which were not explicitly discussed in the accompanying package documentation (\cite{JMbayes}). We could  solve these problems because we carefully studied the \texttt{JMbayes} package documentation and further investigated its properties. Hence, our purpose here is not at all to provide a substitute reading to the package documentation. We firmly believe that any interested user of the \texttt{JMbayes} package should carefully study it (\cite{JMbayes}). We intend to provide complementary information aimed at further illustrating the use and the potential flexibility of the package and especially to discuss how joint models should be practically specified and estimated within the \texttt{JMbayes} framework with a well-known medical (\cite{murtaugh1994primary}) and a behavioural database (\cite{Rabbitt2004}).
+These two database from the medical and the behavioral psychology fields were chosen in order to illustrate how joint models can be applied powerfully in both case, despite the fact that the medical field is the only one to benefit from joint modeling in practice. Note that the reader is always refereed for further methodological details and supplementary \texttt{R} code to the \texttt{JMBayes} package paper (\cite{JMbayes}) and to the \texttt{JMbayes} package documentation (\cite{rizopoulos2017package}). The paper is organised as follows. Section \ref{data} presents the two databases used to illustrate the use of the \texttt{JMbayes} package, Section \ref{the model} exposes and illustrates in details three possible association structures between the longitudinal and the time-to-event outcome and their relative estimation procedure with the \texttt{JMbayes} package and Section \ref{discussion} discusses several limitations of the present paper.
+
+
+% Anioenne introduction Sezen
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%The objective of this article is to give a statistically oriented tutorial of the most commonly used methods for jointly modeling survival and longitudinal data with the very recent \texttt{JMbayes} package (\cite{JMbayes}, \cite{rizopoulos2017package}).
+%Joint modeling for longitudinal and time-to-event data is an attractive methodological tool that currently shows a great interest in the statistics and medical literature. Joint models are useful for analysing follow-up studies where the interest lies on associating a longitudinal measure with a time-to-event outcome. These models indeed allow us to estimate the strength of the association between the hazard of an event and an endogenous time-varying process considered as a covariate. 
+
+%One of the major consideration that makes joint modeling challenging is the complexity of the calculation for parameters estimation. This is the particular raison why the more recent developments in the joint modeling field have employed Bayesian methods, such as the very recent \texttt{R} package \texttt{JMbayes}. 
+
+%In this paper, we proposed to explore the theoretical aspects of the joint modeling methodology, parallel to practical applications with the \texttt{JMbayes} package.
+
+%This package provides, among others, several options for modeling
+%the association between the longitudinal and the survival processes, with the possibility of defining different features from the longitudinal process entering in the linear predictor of the time-to-event model. Our aim here is to provide recommendations for how such joints models should be constructed and estimated within the \texttt{JMbayes} package framework. 
+
+%The package presentation paper (\cite{JMbayes}) follows a very similar objective. In this article however, we try to propose a more didactic and complete overview of the joint modeling potential offers by the \texttt{JMBayes} package, focusing on the modelisation part. Note that the reader is always refereed for further details and supplementary \texttt{R} code to the \texttt{JMBayes} package presentation paper (\cite{JMbayes}) and to the \texttt{JMbayes} package documentation (\cite{rizopoulos2017package}). The paper is organised as follows. Section \ref{data} presents the datasets used to illustrate the use of the \texttt{JMbayes} package, Section \ref{the model} exposes and illustrates in details four different association structures and their relative estimation procedure with the \texttt{JMbayes} package and Section \ref{discussion} discusses several limitations of the present paper.
+
+
+\section{Data}
+\label{data}
+
+\subsection{The PBC dataset}
+We chose to illustrate the joint modeling potential of the \texttt{JMbayes} in parallel with a medical and a behavioural dataset. The first dataset is the primary biliary cirrhosis (PBC) dataset (\cite{murtaugh1994primary}). As explained in \cite{JMbayes}, PBC is a chronic, fatal, but rare liver disease characterized by inflammatory destruction of the small bile ducts within the liver, which eventually leads to cirrhosis of the liver. Patients with PBC have abnormalities in several blood tests, such as elevated levels of serum bilirubin. As in \cite{JMbayes}, we will consider $312$ patients who have been randomized to D-penicillamine treatment ($158$ individuals) and placebo ($154$ individuals). Although several biomarkers associated with PBC have been collected for these patients, we will focus on serum bilirubin levels, which is considered one of the most important ones associated with the disease progression. Patients had on average $6.2$ longitudinal measurements (std. deviation $3.8$), with a total of $1945$ observations, all patients confounded. The PBC dataset is available within the \texttt{JMBayes} package. The \texttt{pbc2} and the \texttt{pbc2.id} datasets contain respectively the longitudinal and the survival informations (the \texttt{pbc2} dataset is in the long format and the \texttt{pbc2.id} dataset contains a single row per patient with survival informations). 
+
+\subsection{The MLSC dataset}
+
+The second dataset is the Manchester Longitudinal Study of Cognition (MLSC) dataset (\cite{Rabbitt2004}). The MLSC study is a $20$-plus-year multiassessment, multidomain investigation of cognitive changes across Lifespan in over $6200$ individuals ages from $42$ to $97$ years. As explained in \cite{aichele2015life}, the relations between cognition and survival have been the focus of several previous MLSC analyses (see \cite{aichele2015life} and references therein for further details). Although several cognitive abilities have been measured during the follow-up, we will focus here on processing speed (PS) and sought to determine if the change in PS performances across life span has an impact on the risk of death. The analyses therefore included PS cognitive ability (assessed up to four times within a period of 12 years), demographic variables (age at the start of the study, sex, city, and cohort), and survival status variables. Subjects had on average $1.9$ longitudinal measurements (std. deviation $0.9$). The few number of measurements by subject (on average $1.9$ measurement versus $6.2$ for the PBC dataset) is a characteristic feature of behavioural data which leads to several issues with joint models estimation.
+
+
+\section{The joint model}
+\label{the model}
+
+We will now introduce the joint modeling methodology (\cite{Henderson2000},  \cite{rizopoulos_book}, \cite{Wulfsohn1997}), and illustrate its application with the \texttt{JMbayes} package to explore the causal relations between on the one hand the evolution of the serum bilirubin biomarker and the risk of death or transplantation, and on the other hand the causal link between the evolution of the cognitive PS performance and the risk of death. As explained in \cite{gould_joint_2015}, joint models should be preferred over the simple survival model because they yield more accurate and more precise estimates of the survival model with higher efficiency and higher power.
+Joint model consists of two submodels: a mixed model for the longitudinal part and a survival model for the time-to-event. The dependency between those is specified by allowing the survival submodel to depend on the longitudinal measurement in various ways (see Section \ref{Joint model parametrizations}). The fundamental feature of joint modeling is that repeated measurement and survival data are modelled simultaneously by a joint density and not separately by two marginal densities (see e.g \cite{Rizopoulos_JASA} for further details).  
+The \texttt{JMbayes} package has a basic model fitting function called \texttt{jointModelBayes(.)}, which accepts as main arguments a mixed model object fitted by the function \texttt{lme(.)} of package \texttt{nlme} (\cite{nlme}, see Section \ref{Longitudinal submodel}), and a survival object fitted by a Cox model with the function
+\texttt{coxph(.)} of package survival (\cite{survival-package}, see Section \ref{Survival submodels}).
+ 
+\begin{figure}[!tb]
+\centering
+%\hspace*{-1in}
+\includegraphics[height=12cm,keepaspectratio]{Figures/alive_dead.pdf}
+\caption{Subject-specific longitudinal trajectories for log serum bilirubin biomarker for patients with and without an event.}
+\label{alive_dead}
+\end{figure}
+
+\begin{figure}[!tb]
+\centering
+%\hspace*{-1in}
+\includegraphics[height=12cm,keepaspectratio]{Figures/mlsc_id_300.pdf}
+\caption{Subject-specific longitudinal trajectories of PS cognitive performance for women in the MLSC database. Only the scores for the 300 first women are depicted for the sake of clarity.}
+\label{MLSCalive_dead}
+\end{figure}
+
+\subsection{The Longitudinal Part}
+\label{Longitudinal submodel}
+
+The first practical step in joint modeling is to build a model for the longitudinal data. The \texttt{JMbayes} package allows us to fit the longitudinal part of a joint model with the \texttt{nlme} package (\cite{nlme}) and its respective \texttt{lme(.)} function. The \texttt{nlme} package is probably the most commonly used for linear mixed models fitting within the \texttt{R} environment with its main function \texttt{lme(.)} which allows to properly fit  the mixed model. Longitudinal data consist on repeated measurements of the same outcome for each subject several times (respectively the serum bilirubin levels for the PBC dataset and the processing speed performance for the MLSC dataset). Measurements for the same subject are obviously correlated and each subject in the population is expected to have its own subject-specific response pattern over time. With this feature, mixed effects model is the right analysis to perform.
+
+Practically with the \texttt{JMbayes} package, the response variable has to be normally distributed (however a very recent extension of the \texttt{JMbayes} package allows us to fit non normal as well as multivariate longitudinal responses, see Section \ref{discussion} for further details). This longitudinal model has to be selected in terms of a fixed and a random part. For both parts, usual linear and polynomial effects are allowed (i.e. linear or quadratic terms). Furthermore, nonlinear effects are also feasible. The relation between a covariate and the response variable can therefore be modelled \textit{nonlinearly} with the very flexible \textit{spline} methodology. A spline is a piecewise function consisting of polynomials on each interval between nodes, which are equidistant points distributed in the interval of the measured covariate. The degree of the spline is defined by the polynomial of the higher degree used: if we simply join the nodes by straight lines (a polynomial of degree $1$), the spline is said to be of degree $1$. If all the polynomials are of the third degree, we speak of cubic spline. Within the \texttt{lme} function, the nonlinear effects can be fitted with the subfunction \texttt{ns(.)} from the \texttt{splines} package, which uses natural cubic splines (i.e. spline of third degree). The optimal number of nodes is an arbitrary criterion which has to be selected. It should of course be less or equal to the number of measured points. There is unfortunately no automatic selection procedure implemented in the \texttt{JMbayes} package for selecting the optimal number of nodes (as in the \texttt{mgcv} package for example). We therefore proposed to select this number of nodes first for the fixed part and then for the random part (in the case where both are modelled by a spline), based on the Akaike Information Criterion (AIC) index, available in the output of the linear mixed model fitted with the \texttt{lme} function. Note that smallest AIC indicate preferred model (\cite{akaike_new_1974}). 
+
+Although smoothing effects fitting has gained much popularity in many applied statistical fields, they are unfortunately yet relatively unknown and unused in behavioral research (but cf. \cite{Shadish2013} and \cite{Ghisletta_2018}). The \texttt{JMbayes} package therefore offers the great possibility to use this advanced and very flexibly fitting methodology within the joint modeling framework. 
+
+
+\subsubsection{The PBC dataset}
+\label{long_pbc}
+We will now illustrate the fitting procedure for the longitudinal part using the PBC dataset. First note that we will fit \textit{the logarithm} of the response instead of the response itself (\texttt{log(serBilir)}), due to the \textit{non normality} of the serum bilirubin response measure. For the fixed and the random part, we tested the effect of the covariate \texttt{year}, following \cite{JMbayes}. Graphical investigation of the the log serum bilirubin individual trajectories in Figures \ref{alive_dead} and \ref{id_plot} indicated that these trajectories seem to be nonlinear the fixed part (general tendency) and for the random part (individual deviation from the general tendency), for most individuals. Indeed, the general tendency as well as the individual deviations from the general tendency do not seem to be linear or quadratic, but rather nonlinear. To investigate this graphical observations, we fitted and compared four potential longitudinal submodels. The first submodel (\texttt{lmeFit.pbc1}) proposed a fixed linear effect of \texttt{year} plus a random intercept and a random slope for the random part. The second submodel (\texttt{lmeFit.pbc2}) proposed a fixed part fitted nonlinearly with a natural cubic spline with the function \texttt{ns(.)} plus a random intercept and random slope for the random part and the third model (\texttt{lmeFit.pbc3}) proposed a fixed and a random part fitted nonlinearly with a natural cubic spline with the function \texttt{ns(.)}. 
+
+As explained before in Section \ref{Longitudinal submodel}, the function \texttt{ns(.)}, which generates a natural regression spline basis, requires the user to specify the optimal number of nodes. As no automatic procedure is implemented in \texttt{JMbayes}, we proposed to select this number based on the AIC criterion. In this specific case, the optimal number nodes selected with the AIC criterion was $4$ for the fixed part and $2$ for the random part. The \texttt{R} syntax allowing us to estimate these three mixed models is
+\begin{figure}[!tb]
+\centering
+%\hspace*{-1in}
+\includegraphics[height=12cm,keepaspectratio]{Figures/id_plot.pdf}
+\caption{Subject-specific longitudinal trajectories for log serum bilirubin biomarker for the $48$ first individuals.}
+\label{id_plot}
+\end{figure}
+\begin{verbatim}
+>lmeFit.pbc1<-lme(log(serBilir)~year, data = pbc2, random = ~ year | id)
+>lmeFit.pbc2<-lme(log(serBilir)~ns(year,4),data=pbc2,random=~year|id)
+>lmeFit.pbc3<-lme(log(serBilir)~ns(year,4),data=pbc2,random=~ns(year,2)|id)
+\end{verbatim}
+These models are not nested. We therefore compared them in term of their respective AIC criterion, obtained with the following \texttt{R} commands
+\begin{verbatim}
+> AIC(lmeFit.pbc1)
+[1] 3074.721
+> AIC(lmeFit.pbc2)
+[1] 3062.108
+> AIC(lmeFit.pbc3)
+[1] 2867.064
+\end{verbatim}
+Note that \texttt{id} represents the individuals. 
+The model \texttt{lmeFit.pbc3} indicated the better fit and therefore was used as longitudinal submodel for the PBC dataset. 
+
+%The \texttt{summary(.)} function of this model gives
+%
+%\begin{verbatim}
+%> summary(lmeFit.pbc3)
+% ...
+%       AIC      BIC    logLik
+%  2867.064 2933.909 -1421.532
+%
+%Random effects:
+% Formula: ~ns(year, 2) | id
+% Structure: General positive-definite, Log-Cholesky parametrization
+%             StdDev    Corr         
+%(Intercept)  0.9930755 (Intr) n(,2)1
+%ns(year, 2)1 2.1403136 0.315        
+%ns(year, 2)2 2.0474089 0.248  0.423 
+%Residual     0.2998907              
+%
+%Fixed effects: log(serBilir) ~ ns(year, 4) 
+%                 Value  Std.Error   DF   t-value p-value
+%(Intercept)  0.5620090 0.05857623 1629  9.594490       0
+%ns(year, 4)1 0.4643575 0.05554169 1629  8.360522       0
+%ns(year, 4)2 1.1132234 0.10334602 1629 10.771808       0
+%ns(year, 4)3 1.7013396 0.15806991 1629 10.763210       0
+%ns(year, 4)4 2.1947054 0.24884212 1629  8.819670       0
+%
+%...
+%\end{verbatim}
+
+Let now $y_{i}(t)$ denote the log of the serum bilirubin score for individual $i$ ($i=1, \dots, N$) at time $t$ ($t=1, \dots, T^{*}$) and we have that $y_{i}(t) \sim \mathcal{N}(\mu_i(t), \sigma^{2}) $. Note that $T^{*}$ is the time-to-event for individual $i$. The selected longitudinal model \texttt{lmeFit.pbc3} can be written as
+\begin{equation}
+\begin{split}
+\begin{aligned}
+\mu_i(t) = &(\beta_0 +b_{0_{i}} )+ f(\text{year}_i(t))+f_i(\text{year}_i(t)),\\ 
+\end{aligned}
+\end{split}
+\label{Longitudinal model_pbc}
+\end{equation}
+where $f(.)$ represents the natural cubic spline function with $4$ nodes relative to the fixed part and $f_i(.)$ represents the natural cubic spline function with $2$ nodes relative to the random part. In this case, $\mu_i(t)$ represents the true unobserved subject-specific log serum bilirubin level at time $t$ (the observed value with measurement error is $y_{i}(t)$).
+
+
+\subsubsection{The MLSC dataset}
+
+For the MLSC dataset, the analysis were performed separately for male and female (this partition was necessary because the baseline factor \texttt{sex} did not fulfil the proportional hazard assumption across men and women in the survival Cox model, see \cite{aichele2015life} and Section \ref{Survival submodels} for further details). For the sake of brevity, we decided  to detailed here only the results obtained for the women subsample.
+
+An important characteristic of the behavioural data is the small number of repeated measurement ($1.9$ measurement on average versus $6.2$ for the PBC dataset). We first modeled change in cognitive performance as a function of participant age (as it was done previously in \cite{aichele2015life}) and we encountered convergence issues. We therefore rescaled the age variable and expressed it in terms of time in study (\texttt{Agelag}). The new covariate \texttt{Agelag} starts at zero for the first measurement and then takes the values corresponding to the elapsed time in study. For the fixed part of the mixed model, we also added the effects of women's age at the beginning of the study (\texttt{AgeStart}) to retain all the information related to age in the model. We tested the effect of \texttt{Agelag} for the random part of the model also.
+The individuals trajectories depicted in Figures \ref{MLSCalive_dead} and \ref{MLSCid_plot} argued for a linear (and maybe a quadratic) effect of \texttt{Agelag} on the \texttt{PS} performance for the fixed part (general tendency) and  a linear effect of \texttt{Age} for the random part (individual deviation from the general tendency). Compared to the PBC individual trajectories in Figure \ref{alive_dead}, nonlinear splines do not seams to be useful to model the relation between the longitudinal outcome and the time variable in the MLSC data. 
+
+More precisely, we fitted and compare four submodels. The first submodel \texttt{lmeFit.mlsc1} supposed a fixed linear effects of \texttt{Agelag} and \texttt{AgeStart} plus an interaction between them, as well as a random intercept and a random slope. The second model \texttt{lmeFit.mlsc2} added a fixed quadratic effect of \texttt{Agelag} to the first \texttt{lmeFit.mlsc1} model. Nevertheless we tested non linear effects in the third model with a fixed part modelled by a natural cubic spline with one node with a fixed effect of \texttt{AgeStart} and a random intercept and random slope. The fourth model \texttt{lmeFit.mlsc4} mimics \texttt{lmeFit.mlsc3} with a natural cubic spline with $2$ nodes for the fixed part. Note that \texttt{id} represents the individuals. The following \texttt{R} commands allowed us to estimate these four mixed models
+\begin{figure}[!tb]
+\centering
+%\hspace*{-1in}
+\includegraphics[height=12cm,keepaspectratio]{Figures/MLSC_fem_plot2.pdf}
+\caption{Subject-specific longitudinal trajectories for PS cognitive performance for the $70$ first women in the MLSC database.}
+\label{MLSCid_plot}
+\end{figure}
+\begin{verbatim}
+> lmeFit.mlsc1<-lme(PS~Agelag*AgeStart,data=MLSC_fem,random=~Agelag|id)
+> lmeFit.mlsc2<-lme(PS~Agelag*AgeStart+I(Agelag^2),data=MLSC_fem,
+  random=~Agelag|id)
+> lmeFit.mlsc3<-lme(PS~ns(Agelag,1)+AgeStart,data=MLSC_fem,random=~Agelag|id)
+> lmeFit.mlsc4<-lme(PS~ns(Agelag,2)+AgeStart,data=MLSC_fem,random=~Agelag|id)
+\end{verbatim}
+These models are not nested and were therefore compared based on their AIC criterion. Based on this criterion the model \texttt{lmeFit.mlsc2} indicated the better fit and were chosen as submodel for the longitudinal part of the joint model.
+
+The longitudinal submodel for the MLSC dataset can therefore be written as 
+\begin{equation}
+\begin{split}
+\begin{aligned}
+\mu_i(t) = &(\beta_0 +b_{0_{i}} )+(\beta_1+b_{1_{i}} )\text{Agelag}_i(t)+\beta_2 \text{Agelag}_i^2(t)+\beta_3 \text{AgeStart}_i(t) \\
+&+\beta_4 \text{Agelag}_i(t) \times \text{AgeStart}_i(t),\\ 
+\end{aligned}
+\end{split}
+\label{MLSC_Longitudinal model}
+\end{equation}
+where $\mu_i(t)$ represents the averaged subject-specific PS score at time $t$ and $y_{i}(t)$ denote the real PS score with measurement error with $y_{i}(t) \sim \mathcal{N}(\mu_i(t), \sigma^{2}) $.
+
+\subsection{The Survival Part}
+\label{Survival submodels}
+
+The \texttt{JMbayes} package uses a proportional-hazard semi-parametric Cox model for the fit of the survival part of the joint model. The Cox proportional-hazards model (\cite{cox1972}) is essentially a regression model commonly used in medical research for investigating the association between the time-to-event and one or more continuous or categorical predictors.
+
+The main idea behind a joint model is to link the components of both longitudinal and time-to-event processes together through some shared parameters. 
+Indeed we assumed that the risk of experimenting the event depends on a function of the subject specific longitudinal trajectory $\mu_i(t)$. More specifically, we have that
+\begin{equation}
+\begin{split}
+h_i(t) = &h_0 (t) \exp \big(\gamma^T w_i +g(\alpha, f_i, \mu_i(t))\big),
+\end{split}
+\label{Survival model1}
+\end{equation}
+where $h_0 (t)$ denotes the baseline hazard function at time $t$, $w_i$ is a vector of baseline variables with corresponding regression coefficients $\gamma$. Parameter vector $\alpha$ quantifies the association between selected features of the longitudinal process and the hazard for the event at time $t$. 
+
+This survival Cox model can be viewed as two distinct parts. First the underlying baseline hazard function $h_0 (t)$ describes the hazard at baseline levels of covariates. The \texttt{JMbayes} package implemented the estimation of the Cox model with the \texttt{coxph(.)} function from the \texttt{survival} package. This function \texttt{coxph(.)} allows us to estimate the baseline hazard function $h_0 (t)$ nonparametrically (i.e. without any parametric assumption) using a B-spline approach (regression splines can be instead invoked by appropriately setting argument \texttt{baseHaz}). The number and the position of the nodes are automatically selected but they can be controlled via the \texttt{lng.in.kn} and \texttt{knots} control arguments (see \cite{JMbayes} and references therein for further details). The second part of the Cox model are the effect parameters $\gamma^T w_i +g(\alpha, f_i, \mu_i(t))$. They describe how the hazard varies in response to explanatory covariates, which in our case consist of baseline variables $w_i$ and selected features of the longitudinal process $\mu_i(t)$. 
+
+We will now present various options for the associative function $g(.)$ between selected features of the longitudinal process and the time-to-event. 
+
+
+\subsubsection{The PBC dataset}
+
+Practically, the second step of joint modeling consists on selecting a simple Cox model for the survival part (e.g. selecting \eqref{Survival model1} without the associative part $g(.)$). 
+Note that the event of interest is composite for the PBC dataset (we are interest in alive versus transplanted or death individuals). 
+Thus we started by defining the indicator \texttt{status2} for the composite event (transplantation or death)
+\begin{verbatim}
+pbc2.id$status2 <- as.numeric(pbc2.id$status != "alive")
+\end{verbatim}
+Descriptive plot for the survival outcomes is presented in Figure \ref{KM_pbc}, whose depicts the Kaplan-Meier estimate of transplantation-free survival for the two treatment groups.
+\begin{figure}[!tb]
+\centering
+%\hspace*{-1in}
+\includegraphics[height=9cm,keepaspectratio]{Figures/survival_pbc.pdf}
+\caption{Kaplan-Meier estimator of survival probabilities for the two treatment groups.}
+\label{KM_pbc}
+\end{figure}
+We followed \cite{JMbayes} and proposed a survival submodel with the age of the subjects (\texttt{age}) and the treatment (\texttt{drug}) as baseline variables and also allowed for their interaction. Note that in the joint modeling context  we needed to set \texttt{x = TRUE} (or equivalently \texttt{model = TRUE}) in the call of the \texttt{coxph(.)} function such that the design matrix used in the Cox model is returned in the object fit.
+\begin{verbatim}
+> coxFit.pbc0 <- coxph(Surv(years, status2) ~ drug * age, data = pbc2.id, 
+			   x = TRUE)
+> summary(coxFit.pbc0)
+...
+                      coef exp(coef) se(coef)      z Pr(>|z|)    
+drugD-penicil      0.89393   2.44471  0.92757  0.964    0.335    
+age                0.05680   1.05844  0.01279  4.439 9.02e-06 ***
+drugD-penicil:age -0.01976   0.98043  0.01705 -1.159    0.246    
+\end{verbatim}
+Only the variable \texttt{age} was significant ($p$-value $<0.05$). 
+
+Importantly, the proportional hazard (PH) assumption for each baseline variable has to be fulfilled in a Cox model (\cite{cox1972}). This PH assumption means that the survival curves for two different strata have hazard functions that are proportional over time. If this assumption is not fulfilled for a variable which is of theoretical interest, a stratification procedure is required (\cite{fox2002cox}). The stratification procedure is furthermore supported within the \texttt{JMbayes} package implementation. PH assumption can be tested statistically using the Schoenfeld Residuals Test (SRT) implemented in the \texttt{survival} package with the function \texttt{cox.zph(.)}. The SRT test the independence between the residuals of the Cox model and the time. It relies on testing whether the slope of scaled residuals on time is equal to zero. If not, the PH assumption is violated. The function \texttt{cox.zph()} allows us to test the proportional hazards assumption for each covariate included in a Cox model. For each covariate indeed, the function \texttt{cox.zph()} correlates the corresponding set of scaled Schoenfeld residuals with time, and test for the independence between them. Additionally, it performs a global test for the model as a whole. The proportional hazard assumption is supported if the SRT is non-significant, and refuted otherwise. A stratification procedure will be required in this latter case if the tested variable is of theoretical interest.
+The PH assumption for the baseline variable \texttt{age} was therefore performed using the \texttt{cox.zph(.)} function from the \texttt{survival} package
+\begin{verbatim}
+> coxFit.pbc1 <- coxph(Surv(years, status2) ~ age, data = pbc2.id, x = TRUE)
+> print(cox.zph(coxFit.pbc1))
+        rho  chisq    p
+age -0.0259 0.0934 0.76
+\end{verbatim}
+The PH assumption for \texttt{age} variable was fulfilled ($p$-value $>0.05$) and the stratification procedure was therefore not necessary in this case. The \texttt{coxFit.pbc1} model was selected as the survival submodel for the PBC dataset. 
+
+\subsubsection{The MLSC dataset}
+\label{survival mlsc}
+
+For the MLSC dataset, the indicator for the event (alive or death) is \texttt{AgeLastObserved\_2012}. We also included the Cornell Medical Index (CMI) score for cardiovascular disease symptoms in the model. As explained in \cite{aichele2015life}, the CMI inventory consists of detailed checklists of pathological symptoms and assesses key medical and psychiatric disorders. We use the CMI index and defined a new factor CMIfactor (called \texttt{cardiovascu\_01} in the \texttt{R} output) which takes the value $0$ for absence of cardiovascular disease symptoms versus $1$ for occurrence of cardiovascular disease symptoms. 
+Descriptive plot for the survival outcomes is presented in Figure \ref{KM_MLSC}, which depicts the Kaplan-Meier estimate of survival probabilities versus the age for the two groups defined by the factor CMIfactor.
+\begin{figure}[!tb]
+\centering
+%\hspace*{-1in}
+\includegraphics[height=9cm,keepaspectratio]{Figures/surv_mlsc.pdf}
+\caption{Kaplan-Meier estimator of survival probabilities for the two groups with and without cardiovascular disease (With CD and Without CD).}
+\label{KM_MLSC}
+\end{figure}
+For the MLSC dataset, as explained in \cite{aichele2015life}, age at entry (\texttt{StartAgeFactor}) and recruitment cohort (\texttt{Cohort}) were significant predictors of death for women, but these variables did not fulfilled the PH assumption. They were therefore incorporated as stratification criteria (\texttt{strata(Cohort:StartAgeFactor)}) in the baseline model. 
+We also included the cardiovascular disease symptoms factor (\texttt{cardiovascu\_01}) in the model. This baseline factor fulfilled the PH assumption and was a significant predictor for the risk of death.
+\begin{verbatim}
+> Coxfit2_fem <- coxph(Surv(AgeLastObserved_2012, status) ~ cardiovascu_01+
+strata(Cohort:StartAgeFactor), data = MLSC_ID_fem,x=TRUE)
+> print(cox.zph(Coxfit2_fem))
+                       rho chisq     p
+cardiovascu_01TRUE -0.0343  1.18 0.277
+
+> summary(Coxfit2_fem)
+...
+                      coef exp(coef) se(coef)     z Pr(>|z|)    
+cardiovascu_01TRUE 0.46063   1.58507  0.09015 5.109 3.23e-07 ***
+
+...
+\end{verbatim}
+The \texttt{Coxfit2\_fem} model was selected as survival submodel for the MLSC dataset. 
+
+\subsection{Joint model parametrizations}
+\label{Joint model parametrizations}
+
+We will explored now the nature of the dependency between the log serum bilirubin evolution and the risk of death or transplantation and between the evolution of PS performance and the time-to-death, by considering three different association structures between the longitudinal and the survival model. These three different associations structures leaded to three different forms for the survival submodel in \eqref{Survival model1}.
+The first survival submodel we proposed to investigate is the most classically used in the joint modeling literature. It is known as ``current value'' parametrization and assumes that the current value of the longitudinal measure is predictive for the risk of event. 
+
+\subsubsection{``Current value'' parametrization}
+\label{CV}
+
+\paragraph{The PBC dataset}
+
+Let $h_i(t)$ denotes the hazard of death for individual $i$ at time $t$. For the PBC dataset, this first PH submodel can be written as 
+\begin{equation}
+\begin{split}
+h_i(t) = &h_0 (t) \exp \big(\beta_1 \text{age}_i+ \alpha_1 \mu_i(t)\big),
+\end{split}
+\label{Survival model_p1}
+\end{equation}
+
+where the coefficient $\alpha_1$ provides a measure of the strength of the association between the value of the log serum bilrubin at time $t$ and the survival process at the same time. More precisely, each one unit increase of the current value of the log serum bilrubin is associated with an $\exp (\alpha_1)$-fold increase in a subject's risk of experimenting the event. Including the true unobserved trajectory function, $\mu_i(t)$, into the linear predictor of the proportional hazards model provides a way to link both longitudinal and survival submodels to form the joint modeling framework. The formulation in \eqref{Survival model_p1} assumes that the association between the longitudinal and the time-to-event outcomes is based on the current value of the longitudinal response at time $t$. Note that this parametrization supposes that the association between the longitudinal value and the risk of death is the same across all subjects and therefore the longitudinal outcome $\mu_i(t)$ acts as a time-dependent endogenous covariate for the survival process. Practically, the joint model can be estimated with the \texttt{JMbayes} with the following command
+\begin{verbatim}
+> jointFit.pbc1 <- jointModelBayes(lmeFit.pbc4, coxFit.pbc1, timeVar = "year", 
+                                n.iter = 30000)\end{verbatim}
+where \texttt{lmeFit.pbc4} is the longitudinal submodel, \texttt{coxFit.pbc1} is the survival Cox submodel, \texttt{timeVar = "year"} means that the temporal variable is \texttt{year} and \texttt{n.iter = 30000} is the number of iteration we ask for the MCMC algorithm. Note that no specification of the association structure is necessary while the ``current value'' parametrization is the default implement within the \texttt{jointModelBayes(.)} function.
+Summary statistics can be obtained with the command
+\begin{verbatim}
+> summary(jointFit.pbc1)
+\end{verbatim}
+and summary output is of the following form
+\begin{verbatim}
+...
+Variance Components:
+              StdDev    Corr        
+(Intercept)   1.0000  (Intr)  n(,2)1
+ns(year, 2)1  2.3023  0.3240        
+ns(year, 2)2  2.2185  0.2446  0.4997
+Residual      0.2985                
+
+Coefficients:
+Longitudinal Process
+              Value Std.Err Std.Dev   2.5%  97.5%      P
+(Intercept)  0.5527  0.0118  0.0622 0.4425 0.6897 <0.001
+ns(year, 4)1 0.4753  0.0081  0.0558 0.3635 0.5833 <0.001
+ns(year, 4)2 1.1552  0.0229  0.1174 0.9371 1.3971 <0.001
+ns(year, 4)3 1.8795  0.0353  0.1644 1.5450 2.1829 <0.001
+ns(year, 4)4 2.4713  0.0468  0.2602 1.9820 2.9650 <0.001
+
+Event Process
+          Value Std.Err  Std.Dev    2.5%    97.5%      P
+age      0.0654  0.0010   0.0088  0.0473   0.0818 <0.001
+Assoct   1.4649  0.0060   0.1070  1.2512   1.6804 <0.001
+tauBs  321.8428 55.0249 262.2664 36.7970 986.8540     NA
+...
+\end{verbatim}
+The function \texttt{jointModelBayes(.)} is the principal function of the \texttt{JMbayes} package. It uses a Metropolis-based Markov chain Monte Carlo (MCMC) algorithm for parameters estimation and therefore MCMC options have to be chosen. Using the control argument \texttt{n.iter}, we specified that after the burn-in period, MCMC algorithm should run for $30000$ iterations (arguments \texttt{burn-in} and \texttt{thinning} can also be selected, see \cite{JMbayes} for further details).
+In a Bayesian paradigm, prior distributions have to be selected for unknown parameters. Here, the priors distributions for fixed and random coefficients were set to vague priors by default. Note that the parameters estimated previously for the simple longitudinal and survival submodels were used as starting values for the MCMC algorithm. The \texttt{plot(.)} function can be used to produce diagnostic plots for investigating the convergence of the MCMC estimation. It includes trace plots, auto-correlation plots and kernel density estimation plots (see \cite{JMbayes} and \cite{rizopoulos2017package} for further details).
+
+The output of the \texttt{summary(.)} function contains model summary statistics (\texttt{LPML} is the log pseudo marginal likelihood value, \texttt{DIC} is the deviance information criterion and \texttt{pD} are the effective number of parameters component of the \texttt{DIC}), the posterior means for all estimated parameters, their relative standard errors and standard deviations, their relative 95\% credibility intervals and the related tail probabilities. Note that the coefficients estimated for the natural cubic spline (i.e. \texttt{ns(.)}) cannot be interpreted directly while they represent linear combinations of the estimated spline basis. The \texttt{Assoct} coefficient in the \texttt{summary(.)} output represents $\alpha_1$ in equation \eqref{Survival model_p1}.
+
+The results suggested that the value of the log of serum bilirubin is strongly associated with the risk of experimenting the composite event, with a unit increase of the current value of log serum bilirubin associated with a $\exp(1.4649)$ = $4.327$-fold increase in a patient's risk of transplantation or death. 
+
+
+\paragraph{The MLSC dataset}
+For the MLSC dataset, the first survival submodel relative to the ``current value'' parametrization can be written as 
+\begin{equation}
+\begin{split}
+h_i(t) = &h_0 \exp \big(\beta_1 \text{CMIfactor}_i + \text{strata(Cohort:StartAgeFactor)}_i  + \alpha_1 \mu_i(t)\big),
+\end{split}
+\label{Survival model_mlsc1}
+\end{equation}
+and the corresponding joint model estimation with the \texttt{JMbayes} package can be performed with the following \texttt{R} command
+\begin{verbatim}
+> jointFit.mlsc1 <-jointModelBayes(lmeFit.mlsc2,coxFit.mlsc1,timeVar="Agelag",
+n.iter = 30000) 
+\end{verbatim}
+Summary statistics can be obtained with 
+\begin{verbatim}
+> summary(jointFit.mlsc1)
+...
+Variance Components:
+             StdDev    Corr
+(Intercept)  6.0774  (Intr)
+Agelag  0.3209  0.2403
+Residual     0.8945        
+
+Coefficients:
+Longitudinal Process
+                            Value Std.Err Std.Dev    2.5%   97.5%      P
+(Intercept)                0.4993  0.0038  0.1706  0.1673  0.8277  0.008
+Agelag                    -0.3374  0.0004  0.0111 -0.3591 -0.3162 <0.001
+AgeStart                  -0.3947  0.0005  0.0231 -0.4378 -0.3482 <0.001
+I(Agelag^2)               -0.0096  0.0001  0.0008 -0.0111 -0.0081 <0.001
+Agelag:AgeStart           -0.0164  0.0000  0.0013 -0.0190 -0.0138 <0.001
+
+Event Process
+                     Value Std.Err Std.Dev    2.5%   97.5%      P
+cardiovascu_01TRUE  0.3829  0.0032  0.0811  0.2191  0.5450 <0.001
+Assoct             -0.0041  0.0001  0.0014 -0.0070 -0.0015  0.003
+tauBs               1.1857  0.1962  0.6035  0.4580  2.7787     NA
+...
+\end{verbatim}
+The \texttt{Assoct} coefficient represents $\alpha_1$ in equation \eqref{Survival model_p1}. These results suggest that the decrease of the PS performance is strongly associated with the risk of death ($p>0.01$). Each one unit decrease of the current value of PS is indeed associated with $0.004$ fold increase in a women's risk of death (calculated as $1-\exp (-0.0041)=1-0.996$).
+
+This first ``Current value'' parametrisation however cannot distinguish between subjects who have, at a specific time point, an equal longitudinal score, but which may differ in their rate of change of this score (one subject having an increasing trajectory and the other a decreasing trajectory for example).
+An extension of the submodels \eqref{Survival model_p1} and \eqref{Survival model_mlsc1} allows us to capture this effect of the rate of change (i.e. the slope) of the longitudinal measurement on the risk of experimenting the event by enabling the hazard of death to depend on both the \textit{current value} and the \textit{current slope} of the longitudinal measure at time $t$.
+
+\subsubsection{``Current value plus slope '' parametrization}
+\label{Current value plus slope}
+
+\paragraph{The PBC dataset}
+For the PBC dataset, this second association structure between the survival and the longitudinal submodel, known as ``current value plus slope'' parametrization, supposes a submodel of the form
+\begin{equation}
+\begin{split}
+h_i(t) = &h_0 (t) \exp \big(\beta_1 \text{age}_i+ \alpha_1 \mu_i(t)+\alpha_2 \mu_i^{'}(t)\big),
+\end{split}
+\label{Survival model_p2}
+\end{equation}
+where the hazard of experimenting the event at time $t$ is now assumed to be associated with both the value of the log serum bilrubin at time $t$, $\mu_i(t)$, and the current rate of change (i.e. slope) of the log serum bilrubin at time $t$, noted $\mu_i^{'}(t)$. 
+
+In mathematics, the slope of a line is a number that describes both the direction and the steepness of this line. The direction of a line is either increasing (if it goes up from left to right), decreasing (if it goes down from left to right) or horizontal (if the slope is zero). The slope of a curve at a point is defined as \textit{the slope of the tangent line at that point}. 
+
+The coefficients $\alpha_1$ and $\alpha_2$ therefore provide a measure of the strength of the association between respectively the value and the rate of change of the logarithm of serum bilirubin at time $t$ and the survival process at the same time. For subjects having the same level of log serum bilirubin $\mu_i(t)$, the hazard ratio for one unit increase of the current slope (i.e. the trajectory) of log serum bilirubin is $\exp (\alpha_2)$. $\alpha_1$ can be interpreted as explained for submodel \eqref{Survival model_p1}.
+Practically, we have that 
+\begin{equation}
+\mu_i^{'}(t)=\frac{d\mu_i(t)}{dt}, 
+\end{equation}
+where $\mu_i^{'}(t)$ is the derivative of $\mu_i(t)$ with respect to the temporal variable. This quantity has to be calculated ``by hand'' by the user. The reader is referred to any basic mathematical literature for derivative rules. Recalling \eqref{Longitudinal model_pbc}, for the PBC dataset, the temporal variable is \texttt{year} and $\mu_i(t)$ is a function of two natural cubic splines of the variable \texttt{year} (one for the fixed and the other for the random part). So we have to calculate the derivative of a cubic spline, which is a very tricky operation. Hopefully, the function \texttt{dns(.)} implemented within the \texttt{splines} package is able to compute numerically (with a central difference approximation) the derivative of a natural cubic spline fitted by the function \texttt{ns(.)}.
+The corresponding derivative of \eqref{Longitudinal model_pbc} w.r.t. \texttt{years} can be written as
+\begin{equation}
+\mu_i^{'}(t)=\frac{df(\text{year}_i(t))+df_i(\text{year}_i(t))}{d\text{year}},
+\label{derivative_pbc} 
+\end{equation}
+and cannot be simplified anymore. 
+The terms of the derivative in \eqref{derivative_pbc} can be written in \texttt{R} as
+\begin{verbatim}
+> dForm <- list(fixed = ~ 0 + dns(year,4), random = ~ 0 + dns(year, 2), 
+              indFixed = 2:5, indRandom = 2:3)
+\end{verbatim}
+This code means that the derivative of the fixed part of \eqref{Longitudinal model_pbc} w.r.t \texttt{years} (\texttt{fixed =}) contains no intercept (\texttt{$\sim 0$}) plus the derivative of the natural cubic spline with four nodes (\texttt{dns(year,4)}). The derivative of the random part of \eqref{Longitudinal model_pbc} w.r.t \texttt{years} (\texttt{random =}) contains no intercept (\texttt{$\sim 0$}) plus the derivative of the natural cubic spline with $2$ nodes (\texttt{dns(year,2)}). Argument \texttt{indFixed= 2:5} means that the estimated coefficients relative to the derivative of the natural cubic spline with $4$ nodes for the fixed part ($df(\text{year}_i(t))$ in equation \eqref{derivative_pbc} can be founded in the \texttt{summary(jointFit.pbc1)} output in rows $2$ to $5$ from the \texttt{Longitudinal Process} part. Argument \texttt{indRandom= 2:3} means that the coefficients relative to the natural cubic spline with $2$ nodes for the random part ($df_i(\text{year}_i(t))$ in equation \eqref{derivative_pbc} can be founded in the \texttt{summary(jointFit.pbc1)} output in rows $2$ to $3$ from the \texttt{Variance Components} part. The joint model with the value and the slope of the log serum bilrubin at time $t$ as predictors for the risk of transplantation or death at time $t$ can now be estimated with the following \texttt{R} command
+\begin{verbatim}
+> jointFit.pbc2 <- update(jointFit.pbc1, param = "td-both", extraForm = dForm)
+\end{verbatim}
+and summary statistics can be obtained with 
+\begin{verbatim}
+> summary(jointFit.pbc2)
+...
+Variance Components:
+              StdDev    Corr        
+(Intercept)   1.0013  (Intr)  n(,2)1
+ns(year, 2)1  2.5125  0.4158        
+ns(year, 2)2  2.2555  0.3903  0.5917
+Residual      0.2984                
+
+Coefficients:
+Longitudinal Process
+              Value Std.Err Std.Dev   2.5%  97.5%      P
+(Intercept)  0.5652  0.0108  0.0603 0.4585 0.6984 <0.001
+ns(year, 4)1 0.5053  0.0096  0.0576 0.3999 0.6184 <0.001
+ns(year, 4)2 1.2903  0.0227  0.1240 1.0734 1.5401 <0.001
+ns(year, 4)3 2.1321  0.0548  0.2002 1.7806 2.5058 <0.001
+ns(year, 4)4 2.7824  0.0832  0.3073 2.2556 3.4060 <0.001
+
+Event Process
+           Value Std.Err  Std.Dev     2.5%     97.5%      P
+age       0.0457  0.0011   0.0088   0.0282    0.0627 <0.001
+Assoct    1.3436  0.0097   0.1087   1.1370    1.5532 <0.001
+AssoctE   2.2489  0.0492   0.5698   1.1189    3.3905  0.001
+tauBs   458.9789 34.9704 260.7974 135.6167 1108.1645     NA
+
+...
+\end{verbatim}
+\texttt{Assoct} represents $\alpha_1$ and \texttt{AssoctE} represents $\alpha_2$ in equation \eqref{Survival model_p2}.
+The results suggest that the logarithm of serum bilirubin is strongly associated with the risk of transplantation or death, with a unit increase of the current value of log serum bilirubin associated with an $\exp(1.3436)$ = $3.833$-fold increase in a patient's risk of transplantation or death and a unit increase of the current slope of log serum bilirubin associated with an $\exp(2.249)$ = $9.477$-fold increase in a patient's risk of transplantation or death. Note that the current level of log serum bilirubin remained significant for predicting the risk of transplantation or death when the current rate of change of log serum bilirubin was introduced as predictor (the 95\% confidence interval does not contain the zero value), which means that these two features of the log serum bilirubin dynamic are independent predictors for the risk of experimenting the event.
+
+\paragraph{The MLSC dataset}
+
+For the MLSC dataset, the second survival model relative to the ``Current value plus slope'' parametrization can be written as 
+\begin{equation}
+\begin{split}
+h_i(t) = &h_0 \exp \big(\beta_1 \text{CMIfactor}_i + \text{strata(Cohort:StartAgeFactor)}_i  + \alpha_1 \mu_i(t)+\alpha_2 \mu_i^{'}(t)\big),
+\end{split}
+\label{Survival model_mlsc2}
+\end{equation}
+where $\mu_i^{'}(t)$ is the derivative of $\mu_i(t)$ with respect to the temporal \texttt{Agelag} variable. Recalling \eqref{MLSC_Longitudinal model}, this derivative can be written as
+\begin{equation}
+\begin{aligned}
+\mu_i^{'}(t)&=\frac{d\big((\beta_1+b_{1_{i}} )\text{Agelag}_i(t)+\beta_2 \text{Agelag}_i^2(t)
++\beta_4 \text{Agelag}_i(t) \times \text{AgeStart}_i(t)\big)}{d\text{Agelag}_i(t)}\\
+&=(\beta_1+b_{1_{i}})+(\beta_2 \times 2 \times \text{Agelag}_i(t))+(\beta_4 \times \text{AgeStart} ).
+\end{aligned}
+\label{derivative_MLSC}
+\end{equation}
+The terms of the derivative in \eqref{derivative_MLSC} can be written in \texttt{R} as
+\begin{verbatim}
+> dForm2 <- list(fixed = ~ 1 +I(2*Agelag)+AgeStart, random = ~ 1, 
+indFixed = c(2,4,5), indRandom = 2)
+\end{verbatim}
+
+This code means that the derivative of the fixed part of equation \eqref{MLSC_Longitudinal model} w.r.t the temporal variable \texttt{Agelag} (\texttt{fixed =}) contains an intercept (\texttt{$\sim 1$} in the \texttt{R} code and $\beta_1$ in equation \eqref{derivative_MLSC}) plus $2$ times the \texttt{Agelag} variable (\texttt{I(2*Agelag)} in the \texttt{R} code and $\beta_2 \times 2 \times \text{Agelag}_i(t)$ in equation \eqref{derivative_MLSC}) plus \texttt{AgeStart} (\texttt{AgeStart} in the \texttt{R} code and $\beta_4 \times \text{AgeStart}$ in equation \eqref{derivative_MLSC}). The derivative of the random part of \eqref{MLSC_Longitudinal model} w.r.t the temporal variable \texttt{Agelag} (\texttt{random =}) contains an intercept (\texttt{$\sim 1$} in the \texttt{R} code and $b_{1_{i}}$ in equation \ref{derivative_MLSC})). Argument \texttt{indFixed = c(2,4,5)} means that the estimated coefficients $\{\beta_1,\beta_2, \beta_4\}$ relative to the fixed part of the derivative in \eqref{derivative_MLSC} can be founded in the \texttt{summary(jointFit.mslc1)} output in rows $2$, $4$ and $5$ in the \texttt{Longitudinal Process} part. Argument \texttt{indRandom = 2} means that the estimated coefficient $b_{1_{i}}$ relative to the random part of the derivative in \eqref{derivative_MLSC} can be founded in the \texttt{summary(jointFit.mslc1)} output in rows $2$, $4$ and $5$ in the \texttt{Variance Components} part.
+
+The joint model with the value and the slope of PS score at time $t$ as predictors of the risk of death at the same time $t$ can now be estimated with the \texttt{JMbayes} package with the following command
+\begin{verbatim}
+> jointFit.mlsc2 <- update(jointFit.mlsc1, param = "td-both", extraForm = dForm2)
+\end{verbatim}
+and the corresponding \texttt{summary(.)} statistics are given by 
+\begin{verbatim}
+> summary(jointFit.mlsc2)
+...
+Variance Components:
+             StdDev    Corr
+(Intercept)  6.0761  (Intr)
+Agelag       0.3218  0.2468
+Residual     0.8944        
+
+Coefficients:
+Longitudinal Process
+                            Value Std.Err Std.Dev    2.5%   97.5%      P
+(Intercept)                0.4970  0.0039  0.1734  0.1560  0.8300  0.005
+Agelag                    -0.3360  0.0005  0.0112 -0.3581 -0.3144 <0.001
+AgeStart                  -0.3952  0.0005  0.0231 -0.4392 -0.3508 <0.001
+I(Agelag^2)               -0.0099  0.0001  0.0007 -0.0113 -0.0085 <0.001
+Agelag:AgeStart           -0.0162  0.0000  0.0014 -0.0190 -0.0134 <0.001
+
+Event Process
+                     Value Std.Err Std.Dev    2.5%   97.5%      P
+cardiovascu_01TRUE  0.4044  0.0029  0.0815  0.2466  0.5710 <0.001
+Assoct              0.0080  0.0015  0.0045 -0.0010  0.0163  0.103
+AssoctE            -1.2571  0.1633  0.4239 -2.1185 -0.4109 <0.001
+tauBs               1.5126  0.1551  0.7270  0.6264  3.5197     NA
+...
+\end{verbatim}
+\texttt{Assoct} represents $\alpha_1$ and \texttt{AssoctE} represents $\alpha_2$ in equation \eqref{Survival model_mlsc2}. We can note that the current level of PS score is no more significant when the current rate of change of PS score is introduced as predictor of death (the 95\% confidence interval contains the zero value), which means that these two features of the PS score dynamic are not independent predictors of the risk of death. The results suggest that the PS score slope is strongly associated with the risk of death, with a unit decrease of the current value of PS score associated with $0.713$ fold increase in a risk of death (calculated as $1-\exp (-1.2571)=0.716$).
+
+
+\subsubsection{``Shared random effects '' parametrization}
+\label{SRE}
+The last association structure between the survival and the longitudinal submodel we proposed to explore is the so-called ``shared random effects'' parametrization (\cite{Wulfsohn1997}). As explained in \cite{Rizopoulos_JASA}, this parametrization is meaningful when a ``simple'' linear random-intercept and (or) random-slope structure is assumed for the longitudinal submodel. Indeed, in this case the random effects expressed subject-specific deviations from the average intercept and average slope, and therefore the ``shared random effects '' parametrization postulates that patients who have a lower (or higher) level for the longitudinal measure at baseline (i.e., intercept) or who show a steeper increase (or decrease) in their longitudinal trajectories (i.e., slope) are more likely to experience the event. However, when polynomials or splines are used to capture nonlinear subject-specific trajectories (as here with the PBC dataset), random effects do not have a straightforward interpretation, which leads to uninterpretable association parameters. 
+This ``shared random effects'' submodel can be written as
+\begin{equation}
+\begin{split}
+h_i(t) = &h_0 (t) \exp \big(\gamma^T w_i +\alpha^{T}b_i\big),
+\end{split}
+\label{SRE_1}
+\end{equation}
+and we observe that this parametrization is computationally simpler than the ``current value'' and the ``current value plus slope'' parametrization, because the associative part is time-independent ($b_i$ does not depend on $t$ contrary to $\mu_i(t)$ and $\mu_i^{'}(t)$, see e.g. \cite{Rizopoulos_JASA} for further details).
+
+Because the ``shared random effects '' parametrization is no meaningful when splines are used to model random effects, we will illustrate this parametrization with the MLSC data only.
+
+\paragraph{The MLSC dataset}
+With this ``shared random effects'' parametrization, the submodel for the MLSC dataset can be written as
+\begin{equation}
+\begin{split}
+\begin{aligned}
+h_i(t) = &h_0 \exp \big(\beta_1 \text{CMIfactor}_i+ \text{strata(Cohort:StartAgeFactor)}_i \\
+&+ \alpha_3 b_{0_i} + \alpha_4 b_{1_{i}} \text{Agelag}_i(t) \big),
+\end{aligned}
+\end{split}
+\label{Survival model_mlsc3}
+\end{equation}
+where $\alpha_3$ and $\alpha_4$ denote the parameters of association, each one measuring respectively the association between the random intercept and the random slope and the hazard of death. More precisely, for subjects having the same deviation from the average slope, the hazard ratio for one unit increase in the subject-specific deviation from the average intercept is $\exp (\alpha_3)$. Reversely, the hazard ratio for one unit increase in the subject-specific deviation from the average slope is $\exp (\alpha_4)$ for subjects having the same subject-specific deviation from the average intercept.
+The joint model with the subject specific deviations from the general tendencies as predictors of the risk of death can now be estimated with the \texttt{jointModelBayes(.)} function via the following command
+\begin{verbatim}
+> jointFit.mlsc3<- jointModelBayes(lmeFit.mlsc2, Coxfit2_fem, timeVar = "Agelag",
+param = "shared-RE",n.iter = 30000) 
+\end{verbatim}
+and the corresponding summary statistics are given by
+\begin{verbatim}
+> summary(jointFit.mlsc3)
+...
+Variance Components:
+             StdDev    Corr
+(Intercept)  6.0786  (Intr)
+Agelag       0.3206  0.2418
+Residual     0.8954        
+
+Coefficients:
+Longitudinal Process
+                            Value Std.Err Std.Dev    2.5%   97.5%      P
+(Intercept)                0.4992  0.0038  0.1703  0.1743  0.8373  0.003
+Agelag                    -0.3357  0.0003  0.0109 -0.3570 -0.3149 <0.001
+AgeStart                  -0.3952  0.0005  0.0229 -0.4414 -0.3487 <0.001
+I(Agelag^2)               -0.0099  0.0001  0.0007 -0.0113 -0.0086 <0.001
+Agelag:AgeStart           -0.0160  0.0000  0.0014 -0.0187 -0.0132 <0.001
+
+Event Process
+                     Value Std.Err Std.Dev    2.5%   97.5%      P
+cardiovascu_01TRUE  0.3555  0.0039  0.0831  0.1950  0.5138 <0.001
+Assoct:(Intercept) -0.0094  0.0002  0.0057 -0.0207  0.0017  0.095
+Assoct:Agelag      -1.0322  0.0057  0.1532 -1.3283 -0.7220 <0.001
+tauBs               0.5607  0.0312  0.2231  0.2344  1.1091     NA
+...
+\end{verbatim}
+\texttt{Assoct:(Intercept)} represents $\alpha_3$ and \texttt{Assoct:Agelag} represents $\alpha_4$ in equation \eqref{Survival model_mlsc3}. Subject-specific deviations from the population mean intercept are not significant as predictors of the risk of death, but subject-specific deviations from the population mean slope are significant. More precisely, each unit decrease of the subject-specific deviation from the population mean slope of PS is associated with $0.644$ fold increase for the risk of death.
+
+\subsection{Interactions}
+\label{interaction}
+The previous section illustrated the three main options for the association structure between the longitudinal and the time-to-event process. As explained in \cite{JMbayes}, it would be interesting to consider several other options for the associative function $g(.)$ in \eqref{Survival model1} (e.g. interaction or polynomial applied to the current value term $\mu_i(t)$ and
+potentially also to the current slope term $\mu_i^{'}(t)$). 
+
+We will illustrate this option in practice by extending the model \texttt{jointFit.mslc1}, including \textit{an interaction term} between the current value of the PS score $\mu_i(t)$ and the cardiovascular disease factor ($\text{CMIfactor}_i$) as predictor of the risk of death. Indeed, the association structure estimated in model \texttt{jointFit.mslc1} assumes that the association between the true longitudinal value and the risk of event is the same for all subjects. However, sometimes it may be more realistic to allow for different values of association for different subjects subgroups. This can be achieved by forming an interaction between the factor of interest (here the cardiovascular disease factor $\text{CMIfactor}_i$) and the true unobserved longitudinal trajectory $\mu_i(t)$. The model therefore can be written as
+\begin{equation}
+\begin{split}
+h_i(t) = &h_0 \exp \big(\beta_1 \text{CMIfactor}_i + \text{strata(Cohort:StartAgeFactor)}_i  + \\
+& \alpha_1 \mu_i(t)  + \alpha_5 [\mu_i(t) \times \text{CMIfactor}_i ] \big),
+\end{split}
+\label{Survival model_mlsc4}
+\end{equation}
+where the factor $\text{CMIfactor}_i$ now multiplies the true longitudinal profiles $\mu_i(t)$ ($\alpha_5 [\mu_i(t) \times \text{CMIfactor}_i ]$), so that the association parameter $ \alpha_5$ reflects different associations between the current value of the longitudinal process and the risk of death for different subgroups defined by the factor $\text{CMIfactor}_i$. Note that the association structure reduces to the standard current value parameterization when $\text{CMIfactor}_i$ equals $1$.
+
+This option is provided in the \texttt{JMbayes} package via the \texttt{jointModelBayes(.)} function, by suitably specifying the argument \texttt{transFun}. The \texttt{transFun} argument should be a function which contains an argument \texttt{x}, denoting the term of interest from the longitudinal model (i.e. $\mu_i(t)$ or $\mu_i^{'}(t)$), and an
+argument \texttt{data}, which contains the other variable included in the calculation (i.e. here factor $\text{CMIfactor}_i$ for the interaction). 
+
+The transformation function \texttt{transFun} relative to an interaction between the cardiovascular disease factor $\text{CMIfactor}_i$ and the current value of the PS score $\mu_i(t)$ can be written in \texttt{R} as
+\begin{verbatim}
+> tf1<-function (x, data) 
+{cbind(x, "cardiovascu_01" = x * (data$cardiovascu_01=='TRUE'))}
+\end{verbatim}
+This \texttt{tf1} function has to be saved under its generic name (\texttt{tf1}) in a separate \texttt{R} file and sourced in the \texttt{R} environment before estimating the joint model.
+The joint model with survival submodel setted in equation \eqref{Survival model_mlsc4} can now be estimated with the \texttt{JMbayes} package via the following \texttt{R} command
+\begin{verbatim}
+> jointFit.mlsc4 <- update(jointFit.mlsc1, transFun = tf1)
+\end{verbatim}
+Note that several functions can be applied at the same time with the \texttt{transFun} argument. See \cite{JMbayes} for a more complex example with two transformations functions applied to the current value $\mu_i(t)$ and to the current slope terms $\mu_i^{'}(t)$.
+In our case, the estimated joint model with the interaction term $[\mu_i(t) \times \text{CMIfactor}_i]$ as predictor of the risk of death is given by
+\begin{verbatim}
+> summary(jointFit.mlsc4)
+...
+Variance Components:
+             StdDev    Corr
+(Intercept)  6.0717  (Intr)
+Agelag       0.3214  0.2428
+Residual     0.8950        
+
+Coefficients:
+Longitudinal Process
+                            Value Std.Err Std.Dev    2.5%   97.5%      P
+(Intercept)                0.5011  0.0039  0.1749  0.1471  0.8419  0.005
+Agelag                    -0.3363  0.0004  0.0112 -0.3584 -0.3129 <0.001
+AgeStart                  -0.3947  0.0005  0.0233 -0.4412 -0.3496 <0.001
+I(Agelag^2)               -0.0097  0.0001  0.0007 -0.0110 -0.0084 <0.001
+Agelag:AgeStart           -0.0164  0.0000  0.0014 -0.0191 -0.0138 <0.001
+
+Event Process
+                        Value Std.Err Std.Dev    2.5%   97.5%      P
+cardiovascu_01TRUE     1.0813  0.0544  0.3325  0.3782  1.7191 <0.001
+Assoct                -0.0095  0.0006  0.0031 -0.0155 -0.0031  0.001
+Assoct:cardiovascu_01  0.0069  0.0005  0.0032  0.0004  0.0130  0.039
+tauBs                  1.0289  0.3326  0.6709  0.3301  2.9073     NA
+
+\end{verbatim}
+\texttt{Assoct:(Intercept)} represents $\alpha_1$ and \texttt{Assoct:cardiovascu\_01} represents $\alpha_5$ in equation \eqref{Survival model_mlsc4}. There is an evidence that the
+association between $\mu_i(t)$ and the hazard of death is different between the two groups with and without cardiovascular disease ($p$-value$<0.05$). More precisely, each one unit decrease of the current value of PS is associated with an $1-\exp(-0.0095) =  0.0095$-fold increase in a individual's risk of death for someone without cardiovascular disease, and an $1-\exp(-0.0095+0.0069) = 0.0026$-fold increase in a individual's risk of death for someone with cardiovascular disease.
+
+
+\subsection{Joint models comparison}
+\label{joint models comparison}
+As explained in \cite{GuoCarlin}, the DIC (Deviance Information Criterion,  \cite{Spiegelhalter}), a hierarchical modeling generalization of the Akaike Information Criterion, is a good option for joint models comparison. This criterion indeed allows us to summarize the goodness-of-fit of a joint model with a unique number and a proper Bayesian interpretation. The compared models moreover do not need to be nested to be directly comparable with the help of the DIC. Small values indicate preferred models (see \cite{GuoCarlin} and references therein for more details). The \texttt{anova(.)} function from the \texttt{JMbayes} package allows us to compare different joint models fits. In our case, these comparisons are given by
+\begin{verbatim}
+> anova(jointFit.pbc1,jointFit.pbc2)
+               df      LPML      DIC       pD
+jointFit.pbc1 971 -3104.918 5964.322 937.4853
+jointFit.pbc2 972 -3074.238 5901.993 930.7782
+\end{verbatim}
+and 
+\begin{verbatim}
+> anova(jointFit.mlsc1,jointFit.mlsc2,jointFit.mlsc3,jointFit.mlsc4)
+                 df      LPML      DIC       pD
+jointFit.mlsc1 3342 -16791.71 32559.11 3264.802
+jointFit.mlsc2 3343 -16903.56 32554.25 3266.336
+jointFit.mlsc3 3343 -16806.04 32459.65 3261.319
+jointFit.mlsc4 3343 -16817.22 32546.91 3265.837
+\end{verbatim}
+For the PBC dataset, the preferred model is therefore the model \texttt{jointFit.pbc2}, which includes the value plus the slope of the log serum bilirubin as predictors for the risk of event. For the MLSC dataset, the preferred model is \texttt{jointFit.mlsc3}, which includes the random intercept and the random slope of PS as predictors for the risk of death.
+
+\section{Discussion}
+\label{discussion}
+
+\paragraph{Dynamic Prediction}
+In this article, we exposed and illustrated the estimation procedure of joint models with the \texttt{JMbayes} package. There is however several other functionalities implemented within this package, allowing us among others to perform dynamic predictions for the longitudinal and the time-to-event outcomes. The reader is referred to \cite{JMbayes} for a complete exposition of the dynamic prediction potentialities implemented in the \texttt{JMbayes} package. We highlight the fact that with a stratification criterion included in the Cox model (as in model \texttt{Coxfit2\_fem} in Section \ref{survival mlsc}), the dynamic prediction functions implemented in the \texttt{JMbayes} package do not work anymore.
+
+\paragraph{Association Structures}
+We have exposed and discussed the most commonly used association structures implemented within the \texttt{JMbayes} package: the ``current value'', the ``current value plus slope'' and the ``shared random effects'' parametrizations. Two main other associations structures are implemented in this package: the ``lagged effects'' parametrization, where the hazard of experimenting the event at time $t$ is associated with the level of the longitudinal measure at a previous time point $t-p$, and the ``cumulative effects'' parametrization, where the hazard of experimenting the event at time $t$ is associated with the whole information relative to the trajectory of the longitudinal measure up to time $t$. The respective survivals submodels and associated \texttt{R} formulation of these two supplementary associative parametrizations are provided in Table \ref{Table 2}.  
+
+\paragraph{Multivariate Outcomes}
+We have concentrated so far on a single continuous longitudinal outcome (log of serum bilirubin for the PBC dataset and PS for the MLSC dataset) but very often, researchers may have several longitudinal measures they want to study simultaneously. A very recent extension of the \texttt{JMbayes} package allows us to fit joint models for multiple longitudinal outcomes with the function
+\texttt{mvJointModelBayes(.)}. A multivariate mixed model has first to be fitted and selected using the \texttt{mvglmer(.)} function (which furthermore accepts non normal responses belonging to the exponential family distributions). Then a simple Cox model has to be fitted and selected using the function \texttt{coxph(.)} and both resulting objects have to be given as input in the function \texttt{mvJointModelBayes(.)}. More details can be founded in the updated \texttt{JMbayes} reference manual (\cite{rizopoulos2017package}). 
+
+\paragraph{Other Existing Packages}
+We limited us so far to exposed and explained the estimation of joint models with the \texttt{JMbayes} package, which is, to our knowledge, the most recent and complete \texttt{R} package for joint modeling of longitudinal and survival data. However there exist several others packages allowing us to fit joint models. The most popular are certainly the \texttt{JM} package (\cite{JM}) and the \texttt{joineR} package (\cite{joiner_2017}). They differ from the \texttt{JMbayes} package by their respective estimation methods and implemented association structures (see \cite{gould_joint_2015} and \cite{Krol_2017} for a complete overview and description of all existing toolboxes and packages allowing us to fit joint models in different software environment). We discover very recently the joint modeling option offered by the \texttt{rstanarm R} package, which seams to be very userfriendly and powerful. We described the major functionalities of the \texttt{JM}, \texttt{JMbayes}, \texttt{joineR}, \texttt{lcmm}, \texttt{frailtypack} and \texttt{rstanarm} \texttt{R} packages respectively in Tables \ref{Table JM}, \ref{Table JMbayes}, \ref{Table joineR}, \ref{Table lcmm}, \ref{Table frailtypack} and \ref{Table rstanarm}.
+
+\paragraph{MCMC estimation and diagnostic}
+The last point we want to highlight here concerns the MCMC joint models estimation performed with the \texttt{JMbayes} package. As briefly mentioned in Section \ref{CV}, the function \texttt{jointModelBayes} uses a Metropolis-based Markov chain Monte Carlo (MCMC) algorithm implemented by the internal function \texttt{MCMCfit(.)}. 
+We choose here to perform $30000$ iterations in our examples (default is $20000$), but, in practice, we recommended to increase this number of iterations (authors in \cite{Rizopoulos_JASA} use $215000$ iterations with $15000$ discarded thinning for instance). The chains are thinned according to the \texttt{n.thin} argument (default is to keep $2000$ iterations for each parameter).
+From the two schools of running MCMC algorithms, namely the ``one long chain school'' and the ``multiple shorter chains school'', JMbayes implements the ``one long chain school''. Users who wish to check convergence using multiple chains can still do it by calling the function \texttt{jointModelBayes(.)} with different initial values (by appropriately specifying argument \texttt{init}), and extracting the MCMC results for each chain. The results can subsequently
+be analysed with the \texttt{coda} package (\cite{coda}). Finally, trace and autocorrelations plots implemented within the \texttt{JMbayes} package should be inspected in order to detect a potential convergence failure (these plots can be obtained through function \texttt{plot(.)}, see \cite{JMbayes} for further details).
+
+\section{Conclusion}
+
+The objective of this article was to illustrate how joint modeling methods can be applied and interpreted in practice using the \texttt{JMbayes} package. Our aim was not to provide a complete review of the joint modeling methodology, but rather to provide to applied researchers a relatively simple tool to theoretically understand and practically use this powerful and very useful methodology. 
+The challenge now is to encourage applied researchers and statisticians, especially in psychological and behavioural science to use this joint modeling methodology routinely in practice.
+One of the major point that make joint modeling challenging is the complexity of the calculations behind the estimation. Recent developments in the joint modeling field, as here with the \texttt{JMbayes} package, have therefore employed Bayesian methods to avoid challenging explicit multivariate integration. Bayesian methods also provide the possibility to include multiple longitudinal outcomes and multiple competing survival events in the model. Psychological and behavioural research could make a huge profit using joint modeling methodology and we sought to provide here an simple tool to get inside this method with this applied tutorial. Nowadays most interest and published literature about joint modeling methods are in the technical statistical field. We hope that the present tutorial will encourage applied researchers to use this very powerfull statistical tool and therefore offer a larger place to applied joint modeling in the literature.
+
+\clearpage
+
+%---------------------------------------------------------------------------------------------------------------%---------------------------------------------------------------------------------------------------------------
+
+
+\begin{table}[!htb]
+\centering
+\setcellgapes{1pt}
+\makegapedcells
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash }b{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash }b{#1}}
+
+\begin{tabularx}{16cm}{L{4cm}|L{12cm}}
+%\begin{tabular}{C{3cm}|L{10cm}|C{3cm}}
+ \multicolumn{2}{c} {JM (\cite{JM}, \cite{rizopoulos_book})} \\ \hline \hline
+ 
+   Estimation method &  Frequentist approach with maximum likelihood estimation using an expectation-maximization algorithm   \\ \hline
+   Association structure & Current value, current value and slope, shared 		random effects, lagged effects, cumulative effects associations structures implemented  \\ \hline
+   Longitudinal submodel & Longitudinal submodel fitted with the \texttt{nlme()} function from the \texttt{nlme} package. Allows a univariate normally distributed response and non linear effects of covariates fitted with spline \\ \hline
+   Survival submodel & Survival submodel fitted with the \texttt{coxph}()
+or \texttt{survreg}() from the \texttt{survival} package. A number of relative risk and accelerated failure time survival model options are available, including Weibull, piecewise proportional hazards, Cox proportional hazards, and proportional hazards with a spline-approximated baseline risk function. This survival submodel can contain stratification. \\ \hline
+   Model selection & Models selection can be performed via the AIC criterion available with the \texttt{anova}() function\\ \hline
+   Post-fit analysis & Various post-fit functions with goodness-of-fit analyses, plots, predicted trajectories, individual dynamic prediction of the event and predictive accuracy assessment are available\\ \hline
+   
+   \end{tabularx}
+\caption{Main functionalities of \texttt{R} package \texttt{JM}.}
+\label{Table JM}
+\end{table}
+
+
+\begin{table}[!htb]
+\centering
+\setcellgapes{1pt}
+\makegapedcells
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash }b{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash }b{#1}}
+\begin{tabularx}{16cm}{L{4cm}|L{12cm}}
+%\begin{tabular}{C{3cm}|L{10cm}|C{3cm}}
+   
+   \multicolumn{2}{c} {JMbayes (\cite{JMbayes})} \\ \hline \hline
+   
+   Estimation method &  Bayesian approach using a MCMC algorithm. A long chain methodology is implemented, although multiple chains with different starting values within the prior distributions are also feasible with a little programming \\ \hline
+   Association structure & Current value, current value and slope, shared random effects, lagged effects, cumulative effects and free functiona (e.g. interaction, square...) associations structures implemented \\ \hline
+   Longitudinal submodel & Longitudinal submodel fitted with the \texttt{nlme()} function from the \texttt{nlme} package. Allows univariate normally distributed response and non linear effects of covariates fitted with spline. A very recent extension of the package allows to fit multivariate normally distributed longitudinal responses jointly with the time-to-event variable of interest \\ \hline
+   Survival submodel & Survival submodel fitted with the \texttt{coxph}() from the \texttt{survival} package. A number of relative risk and accelerated failure time survival model options are available, including Weibull, piecewise proportional hazards, Cox proportional hazards, and proportional hazards with a spline-approximated baseline risk function. This survival submodel can contain stratification\\ \hline
+   Model selection & Models selection can be performed via the AIC criterion available with the \texttt{anova}() function\\ \hline
+   Post-fit analysis & Various post-fit functions for MCMC diagnostic plots are available. Functionalities are available for computing dynamic predictions for the longitudinal and time-to-event outcomes \\ \hline    
+      Extensions & Joint modeling for multivariate longitudinal outcomes and time-varying association structures are two recent extensions implemented within the \texttt{JMbayes} package \\ \hline    
+\end{tabularx}
+\caption{Main functionalities of \texttt{R} package \texttt{JMbayes}.}
+\label{Table JMbayes}
+\end{table}
+
+
+\begin{table}[!htb]
+\centering
+\setcellgapes{1pt}
+\makegapedcells
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash }b{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash }b{#1}}
+\begin{tabularx}{16cm}{L{4cm}|L{12cm}}
+%\begin{tabular}{C{3cm}|L{10cm}|C{3cm}}
+   
+   \multicolumn{2}{c} {joineR (\cite{joineR1},\cite{joineR2})} \\ \hline \hline
+   
+   Estimation method & Frequentist approach with maximum likelihood estimation using an expectation-maximization algorithm \\ \hline
+   Association structure &  The implemented association structure is based on an extended version of the ``shared random effects'' model proposed by \cite{Wulfsohn1997} \\ \hline
+   Longitudinal submodel & Longitudinal submodel is a linear mixed model (splines and non normal responses are not feasible) \\ \hline
+   Survival submodel & Survival submodel is a Cox proportional hazards model with log-Gaussian frailty. Both submodels have to be written directly within the main function \texttt{joint()}\\ \hline
+   Model selection & Models comparison can be performed by comparing the likelihoods \\ \hline
+   Post-fit analysis & Exact standard errors intervals can be obtained with implemented bootstrap methodology \\ \hline    
+      Extensions & The \texttt{joineRML} package (\cite{hickey2016joint}, \cite{Hickey2018}) is a recent extension of the joineR which allows us to fit multivariate linear longitudinal data with a correlated time-to-event using Bayesian estimation with MCMC algorithm. Inferences are based on approximate standard errors from the empirical profile information matrix contrary to \texttt{joineR} which uses bootstrap estimation approach.\\ \hline    
+\end{tabularx}
+\caption{Main functionalities of \texttt{R} packages \texttt{joineR} and \texttt{joineRML}.}
+\label{Table joineR}
+\end{table}
+
+
+
+\begin{table}[!htb]
+\centering
+\setcellgapes{1pt}
+\makegapedcells
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash }b{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash }b{#1}}
+\begin{tabularx}{16cm}{L{4cm}|L{12cm}}
+%\begin{tabular}{C{3cm}|L{10cm}|C{3cm}}
+   
+   \multicolumn{2}{c} {lcmm (\cite{lcmm})} \\ \hline \hline
+   
+   Estimation method & Frequentist approach based on maximum likelihood estimation using a modified Marquardt algorithm  \\ \hline
+   Association structure &  The associations structures available are based on joint latent class models assumptions, i.e., joint models that consider homogeneous latent subgroups of individuals sharing the same biomarker trajectory and risk of the terminal event\\ \hline
+   Longitudinal submodel & linear model can include Gaussian outcome, curvilinear and ordinal univariate longitudinal outcomes, curvilinear multivariate outcomes (multlcmm) \\ \hline
+   Survival submodel & \\ \hline
+   Model selection & Models comparison can be performed by comparing the likelihoods \\ \hline
+   Post-fit analysis & Various post-fit functions with goodness-of-fit analyses, classification, plots, predicted trajectories, individual dynamic prediction of the event and predictive accuracy assessment are available \\ \hline    
+  
+\end{tabularx}
+\caption{Main functionalities of \texttt{R} package \texttt{lcmm}.}
+\label{Table lcmm}
+\end{table}
+
+
+
+\begin{table}[!htb]
+\centering
+\setcellgapes{1pt}
+\makegapedcells
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash }b{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash }b{#1}}
+\begin{tabularx}{16cm}{L{4cm}|L{12cm}}
+%\begin{tabular}{C{3cm}|L{10cm}|C{3cm}}
+   
+   \multicolumn{2}{c} {\texttt{frailtypack} (\cite{Krol_2017})} \\ \hline \hline
+   
+   Estimation method & Frequentist approach based on standard and penalized maximum likelihood approach \\ \hline
+   Association structure &  \\ \hline
+   Longitudinal submodel and survival submodel &  	Several type of joint models are implemented. In particular, joint models for recurrent events and a terminal event, joint models for two survival outcomes for clustered data, joint models for two types of recurrent events and a terminal event, joint models for a longitudinal biomarker and a terminal event joint models for a longitudinal biomarker, recurrent events and a terminal event \\ \hline
+   Model selection & Two criteria for assessing model's predictive accuracy are implemented an can be used for model selection\\ \hline
+   Post-fit analysis & Each model function allows to evaluate goodness-of-fit analyses and provides plots of baseline hazard functions. Individual dynamic predictions of the terminal event and evaluation of predictive accuracy are implemented. \\ \hline    
+  \end{tabularx}
+\caption{Main functionalities of \texttt{R} package \texttt{frailtypack}.}
+\label{Table frailtypack}
+\end{table}
+
+
+\begin{table}[!htb]
+\centering
+\setcellgapes{1pt}
+\makegapedcells
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash }b{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash }b{#1}}
+\begin{tabularx}{16cm}{L{4cm}|L{12cm}}
+%\begin{tabular}{C{3cm}|L{10cm}|C{3cm}}
+   
+   \multicolumn{2}{c} {\texttt{rstanarm} (\cite{rstanarm})} \\ \hline \hline
+   
+   Estimation method & Bayesian approach using a MCMC algorithm. A multiple chain methodology is implemented (long chain is also feasible). Very clear and user friendly implementation\\ \hline
+   Association structure &  Current value, current value and slope, shared random effects, lagged effects, cumulative effects and  interaction effect associations structures are implemented\\ \hline
+   Longitudinal submodel & Generalised linear mixed model that allowed (the response has to follows a distribution in the exponential family and not only a Normal distribution). The longitudinal part can be multivariate. Linear slope, cubic splines, or polynomial terms are allowed. \\ \hline
+   Survival submodel &  The baseline hazard can be specified parametrically or non parametrically. Stratification procedure is not allowed.\\ \hline
+   Model selection & There is currently no model selection procedure implemented  \\ \hline
+   Post-fit analysis & Several post-fit functions for dynamic predictions of the terminal event and longitudinal trajectories and as well as visualisation functions are available \\ \hline    
+  
+\end{tabularx}
+\caption{Main functionalities of \texttt{R} package \texttt{rstanarm}.}
+\label{Table rstanarm}
+\end{table}
+
+
+
+
+\begin{landscape}
+
+\begin{table}[!htb]
+\centering
+\setcellgapes{1pt}
+\makegapedcells
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash }b{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash }b{#1}}
+
+\begin{tabularx}{20cm}{C{3.5cm}|C{8cm}|X}
+%\begin{tabular}{C{3cm}|L{10cm}|C{3cm}}
+   Association & Cox submodel & Implementation code in \texttt{JMbayes} 
+    \\ \hline
+ 	
+	\multirow{5}{*}{Lagged Effects} &  \multirow{5}{*}{$h_i(t) = h_0 (t) \exp \big(\gamma^T w_i +\alpha\mu_i(t-p)\big)$} & Argument \texttt{lag=p} has to be included in the call of the generic function: \texttt{jointModelBayes(lmeFit, Coxfit, timeVar = .,n.iter = .,lag=p)}. \\  \hline
+\multirow{9}{*}{Cumulative Effects} &  \multirow{9}{*}{$h_i(t) = h_0 (t) \exp \big(\gamma^T w_i +\alpha \int_{0}^{t}\mu_i(s)\mathrm{d}s\big)$}& Argument \texttt{iForm} has to be derived by hand and corresponding coefficients pointed out, as for the derivatives \texttt{dForm} and \texttt{dForm2} in Section \ref{Current value plus slope}.\\&&
+ The \texttt{R} formulation of the joint model becomes \\&&
+ \texttt{jointModelBayes(lmeFit, Coxfit, timeVar = .,n.iter = .,param = "td-extra", extraForm = iForm).}
+
+	\\\hline 
+\end{tabularx}
+\caption{List of main supplementary association structures implemented in \texttt{JMbayes}.}
+\label{Table 2}
+\end{table}
+\end{landscape}
+
+
+\bibliographystyle{chicago}
+\bibliography{Lifebrain}
+
+\end{document}
+
